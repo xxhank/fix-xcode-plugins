@@ -1,0 +1,5 @@
+#!/bin/sh
+
+DVTPlugInCompatibilityUUID=`defaults read /Applications/Xcode.app/Contents/Info DVTPlugInCompatibilityUUID`
+echo $DVTPlugInCompatibilityUUID
+find ~/Library/Application\ Support/Developer/Shared/Xcode/Plug-ins -name Info.plist -maxdepth 3 -print0 | xargs -0 -I {} defaults write {} DVTPlugInCompatibilityUUIDs -array-add $DVTPlugInCompatibilityUUID
