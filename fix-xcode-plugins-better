@@ -1,5 +1,41 @@
-#!/bin/sh
+#!/usr/bin/env bash
+#
+action="$1"
 
-DVTPlugInCompatibilityUUID=`defaults read /Applications/Xcode.app/Contents/Info DVTPlugInCompatibilityUUID`
-echo $DVTPlugInCompatibilityUUID
-find ~/Library/Application\ Support/Developer/Shared/Xcode/Plug-ins -name Info.plist -maxdepth 3 -print0 | xargs -0 -I {} defaults write {} DVTPlugInCompatibilityUUIDs -array-add $DVTPlugInCompatibilityUUID
+if [[ "$action" == "process" ]]; then
+    INFO_PLIST="$2"
+    NEED_ADD_UUID="$3"
+    UUIDs=$(defaults read "${INFO_PLIST}" DVTPlugInCompatibilityUUIDs)
+
+    # 移除括号,空格,双引号,重复项
+    CLEANED_UUIDS=$(echo "$UUIDs" | sed -E -e "s/,|\(|\)//g" -e "s/[\t ]+//g" -e "s/\"//g" | sort | uniq)
+
+    # 合并多行为一行
+    JOINED_UUIDS=""
+    for i in ${CLEANED_UUIDS}; do
+        if [[ $i != "" ]]; then
+            JOINED_UUIDS="$JOINED_UUIDS $i"
+        fi
+    done
+
+    #echo "joined:$JOINED_UUIDS"
+    if echo "${JOINED_UUIDS}" | grep -q "${NEED_ADD_UUID}" ; then
+        defaults delete "${INFO_PLIST}" DVTPlugInCompatibilityUUIDs
+
+        # shellcheck disable=2086
+        defaults write "${INFO_PLIST}" DVTPlugInCompatibilityUUIDs -array $JOINED_UUIDS
+    else
+        echo "need append"
+        defaults delete "${INFO_PLIST}" DVTPlugInCompatibilityUUIDs
+
+        # shellcheck disable=2086
+        defaults write "${INFO_PLIST}" DVTPlugInCompatibilityUUIDs -array $JOINED_UUIDS $NEED_ADD_UUID
+    fi
+else
+    DVTPlugInCompatibilityUUID=$(defaults read /Applications/Xcode.app/Contents/Info DVTPlugInCompatibilityUUID)
+    echo "$DVTPlugInCompatibilityUUID"
+    Plugins_Folder="$HOME/Library/Application Support/Developer/Shared/Xcode/Plug-ins"
+    find "${Plugins_Folder}" -name Info.plist -exec "$0" process {} "$DVTPlugInCompatibilityUUID" \;
+fi
+
+
